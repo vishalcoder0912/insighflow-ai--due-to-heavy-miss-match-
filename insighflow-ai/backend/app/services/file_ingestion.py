@@ -182,7 +182,7 @@ class FileIngestionService:
         self.file_record.encoding = parsed.get("encoding")
         self.file_record.skipped_rows = parsed.get("skipped_rows", 0)
         self.file_record.statistics = normalized["statistics"]
-        self.file_record.metadata = {
+        self.file_record.file_metadata = {
             "delimiter": parsed.get("delimiter"),
             "sheets": parsed.get("sheets"),
             "sheet_count": parsed.get("sheet_count"),

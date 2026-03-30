@@ -5,9 +5,8 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import datetime
-from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text, Uuid
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -46,12 +45,8 @@ class UploadedFile(Base, TimestampMixin):
     file_size: Mapped[int] = mapped_column(Integer, nullable=False)
     row_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     column_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    columns: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
-    data_preview: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSON, nullable=False, default=list
-    )
+    columns: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    data_preview: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     upload_date: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
@@ -61,10 +56,10 @@ class UploadedFile(Base, TimestampMixin):
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     encoding: Mapped[str | None] = mapped_column(String(50), nullable=True)
     skipped_rows: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    statistics: Mapped[dict[str, Any]] = mapped_column(
-        JSON, nullable=False, default=dict
+    statistics: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    file_metadata: Mapped[dict] = mapped_column(
+        "metadata_json", JSON, nullable=False, default=dict
     )
-    metadata: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
 
 
 class DynamicDataTable(Base):
@@ -79,7 +74,7 @@ class DynamicDataTable(Base):
         nullable=False,
         index=True,
     )
-    data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    row_data: Mapped[dict] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )

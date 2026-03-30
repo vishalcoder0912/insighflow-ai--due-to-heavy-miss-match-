@@ -222,3 +222,166 @@ export async function loadPersistedDataset(): Promise<Dataset | null> {
     return null;
   }
 }
+
+export interface QueryRequest {
+  dataset_id: number;
+  message: string;
+}
+
+export interface QueryResponse {
+  status: string;
+  message?: string;
+  sql_query?: string;
+  columns: string[];
+  rows: Record<string, any>[];
+  row_count: number;
+  chart_config?: {
+    type: string;
+    data: any[];
+    options: any;
+    title: string;
+  };
+  explanation?: string;
+}
+
+export async function executeQuery(request: QueryRequest): Promise<QueryResponse> {
+  const token = await ensureSession();
+  return apiRequest<QueryResponse>('/analytics/query', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+    token,
+  });
+}
+
+export interface ProfileResponse {
+  status: string;
+  profile?: {
+    total_rows: number;
+    total_columns: number;
+    column_profiles: any[];
+    memory_usage_bytes: number;
+    completeness: number;
+  };
+  schema?: { name: string; dtype: string }[];
+  suggestions?: string[];
+}
+
+export async function profileDataset(datasetId: number): Promise<ProfileResponse> {
+  const token = await ensureSession();
+  return apiRequest<ProfileResponse>('/analytics/profile', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dataset_id: datasetId }),
+    token,
+  });
+}
+
+export interface AnomalyResponse {
+  status: string;
+  column?: string;
+  anomalies?: {
+    iqr?: { count: number; percentage: number; rows: any[] };
+    zscore?: { count: number; percentage: number; rows: any[] };
+  };
+  summary?: {
+    mean: number;
+    std: number;
+    median: number;
+    min: number;
+    max: number;
+  };
+}
+
+export async function detectAnomalies(
+  datasetId: number,
+  column?: string,
+  method: string = 'iqr'
+): Promise<AnomalyResponse> {
+  const token = await ensureSession();
+  return apiRequest<AnomalyResponse>('/analytics/anomalies', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dataset_id: datasetId, column, method }),
+    token,
+  });
+}
+
+export interface CorrelationResponse {
+  status: string;
+  columns?: string[];
+  matrix?: Record<string, Record<string, number>>;
+  top_correlations?: { column1: string; column2: string; correlation: number; strength: string }[];
+  summary?: Record<string, number>;
+}
+
+export async function calculateCorrelation(datasetId: number, columns?: string[]): Promise<CorrelationResponse> {
+  const token = await ensureSession();
+  return apiRequest<CorrelationResponse>('/analytics/correlation', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dataset_id: datasetId, columns }),
+    token,
+  });
+}
+
+export interface ForecastResponse {
+  status: string;
+  historical?: number[];
+  forecast?: number[];
+  trend?: number;
+  summary?: {
+    last_value: number;
+    average: number;
+    predicted_change: number;
+    confidence: string;
+  };
+}
+
+export async function generateForecast(
+  datasetId: number,
+  valueColumn: string,
+  timeColumn?: string,
+  periods: number = 5
+): Promise<ForecastResponse> {
+  const token = await ensureSession();
+  return apiRequest<ForecastResponse>('/analytics/forecast', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dataset_id: datasetId, value_column: valueColumn, time_column: timeColumn, periods }),
+    token,
+  });
+}
+
+export interface InsightsResponse {
+  status: string;
+  insights?: { type: string; column?: string; message: string; severity?: string }[];
+  dataset_summary?: {
+    total_rows: number;
+    total_columns: number;
+    numeric_columns: number;
+    categorical_columns: number;
+  };
+}
+
+export async function getInsights(datasetId: number): Promise<InsightsResponse> {
+  const token = await ensureSession();
+  return apiRequest<InsightsResponse>(`/analytics/insights/${datasetId}`, {
+    token,
+  });
+}
+
+export async function getSampleData(datasetId: number, limit: number = 100) {
+  const token = await ensureSession();
+  return apiRequest<{ status: string; rows: any[]; columns: string[] }>(`/analytics/sample/${datasetId}?limit=${limit}`, {
+    token,
+  });
+}
+
+export async function getDatasetSchema(datasetId: number) {
+  const token = await ensureSession();
+  return apiRequest<{ status: string; columns: { name: string; dtype: string }[]; row_count: number }>(
+    `/analytics/schema/${datasetId}`,
+    { token }
+  );
+}

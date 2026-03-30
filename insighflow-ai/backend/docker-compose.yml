@@ -1,0 +1,45 @@
+services:
+  api:
+    build:
+      context: .
+    container_name: insighflow-api
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/insighflow
+      ALEMBIC_DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/insighflow
+      AUTO_CREATE_DB: "false"
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app
+    depends_on:
+      - db
+      - redis
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  db:
+    image: postgres:16
+    container_name: insighflow-db
+    environment:
+      POSTGRES_DB: insighflow
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: insighflow-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:

@@ -16,6 +16,11 @@ from app.core.logging import configure_logging, logger
 from app.db.session import dispose_engine
 from app.middleware.logging import RequestLoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.services.file_errors import FileIngestionException
+from app.services.file_errors import (
+    file_ingestion_exception_handler,
+    generic_exception_handler,
+)
 from app.utils.files import ensure_upload_directories
 
 
@@ -59,7 +64,9 @@ def create_app() -> FastAPI:
     app.include_router(api_router)
 
     @app.exception_handler(ApiException)
-    async def api_exception_handler(request: Request, exc: ApiException) -> JSONResponse:
+    async def api_exception_handler(
+        request: Request, exc: ApiException
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
             content={
@@ -78,7 +85,9 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def validation_exception_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
         return JSONResponse(
             status_code=422,
             content={
@@ -92,7 +101,9 @@ def create_app() -> FastAPI:
         )
 
     @app.exception_handler(Exception)
-    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    async def unhandled_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
         logger.exception("Unhandled application error", exc_info=exc)
         return JSONResponse(
             status_code=500,
@@ -105,6 +116,8 @@ def create_app() -> FastAPI:
                 "request_id": getattr(request.state, "request_id", None),
             },
         )
+
+    app.add_exception_handler(FileIngestionException, file_ingestion_exception_handler)
 
     return app
 

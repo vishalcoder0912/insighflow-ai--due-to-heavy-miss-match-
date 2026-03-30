@@ -8,7 +8,9 @@ from fastapi import APIRouter
 logger = logging.getLogger(__name__)
 
 
-def _include_router(module_path: str, *, prefix: str | None = None, required: bool = False) -> None:
+def _include_router(
+    module_path: str, *, prefix: str | None = None, required: bool = False
+) -> None:
     """Import and include a router, optionally tolerating missing optional deps."""
 
     try:
@@ -16,7 +18,9 @@ def _include_router(module_path: str, *, prefix: str | None = None, required: bo
     except Exception:
         if required:
             raise
-        logger.exception("Skipping optional router import", extra={"module_path": module_path})
+        logger.exception(
+            "Skipping optional router import", extra={"module_path": module_path}
+        )
         return
 
     router = getattr(module, "router")
@@ -37,3 +41,4 @@ _include_router("app.api.v1.analytics_routes", prefix="/api/v1")
 _include_router("app.api.v1.advanced_analytics_routes")
 _include_router("app.api.v1.datasets", prefix="/api/v1")
 _include_router("app.api.v1.dashboards", prefix="/api/v1")
+_include_router("app.api.v1.file_upload", prefix="/api/v1")

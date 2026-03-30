@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-SAFE_COLUMN_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+SAFE_COLUMN_PATTERN = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 MAX_ROWS_PER_INSERT = 5000
 MAX_ROWS_STORAGE = 1000000
 
@@ -31,25 +31,25 @@ class PostgresStorageEngine:
     @staticmethod
     def sanitize_column_name(name: str) -> str:
         """Sanitize column name for safe SQL usage."""
-        clean = re.sub(r'[^a-zA-Z0-9_]', '_', str(name).strip())
-        if not clean[0].isalpha() and clean[0] != '_':
-            clean = f'col_{clean}'
+        clean = re.sub(r"[^a-zA-Z0-9_]", "_", str(name).strip())
+        if not clean[0].isalpha() and clean[0] != "_":
+            clean = f"col_{clean}"
         return clean[:64]
 
     @staticmethod
     def detect_postgres_dtype(dtype: str) -> str:
         """Map pandas dtype to PostgreSQL type."""
         dtype_lower = dtype.lower()
-        if 'int' in dtype_lower:
-            return 'BIGINT'
-        elif 'float' in dtype_lower:
-            return 'DOUBLE PRECISION'
-        elif 'bool' in dtype_lower:
-            return 'BOOLEAN'
-        elif 'datetime' in dtype_lower or 'date' in dtype_lower:
-            return 'TIMESTAMP'
+        if "int" in dtype_lower:
+            return "BIGINT"
+        elif "float" in dtype_lower:
+            return "DOUBLE PRECISION"
+        elif "bool" in dtype_lower:
+            return "BOOLEAN"
+        elif "datetime" in dtype_lower or "date" in dtype_lower:
+            return "TIMESTAMP"
         else:
-            return 'TEXT'
+            return "TEXT"
 
     async def create_dataset_table(
         self,
@@ -58,18 +58,20 @@ class PostgresStorageEngine:
     ) -> bool:
         """Create dynamic table for dataset."""
         table_name = f"dataset_{dataset_id}"
-        table_name = re.sub(r'[^a-zA-Z0-9_]', '_', table_name)
+        table_name = re.sub(r"[^a-zA-Z0-9_]", "_", table_name)
 
         column_defs = []
         for col in columns:
-            col_name = self.sanitize_column_name(col.get('name', 'column'))
-            dtype = self.detect_postgres_dtype(col.get('dtype', 'text'))
+            col_name = self.sanitize_column_name(col.get("name", "column"))
+            dtype = self.detect_postgres_dtype(col.get("dtype", "text"))
             column_defs.append(f'"{col_name}" {dtype}')
 
         if not column_defs:
-            column_defs = ['id SERIAL PRIMARY KEY', 'data JSONB']
+            column_defs = ["id SERIAL PRIMARY KEY", "data JSONB"]
 
-        create_sql = f'CREATE TABLE IF NOT EXISTS {table_name} ({", ".join(column_defs)})'
+        create_sql = (
+            f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(column_defs)})"
+        )
 
         try:
             await self.session.execute(text(create_sql))
@@ -92,17 +94,20 @@ class PostgresStorageEngine:
             return {"status": "success", "rows_inserted": 0}
 
         table_name = f"dataset_{dataset_id}"
-        table_name = re.sub(r'[^a-zA-Z0-9_]', '_', table_name)
+        table_name = re.sub(r"[^a-zA-Z0-9_]", "_", table_name)
 
-        col_mapping = {self.sanitize_column_name(col.get('name', '')): col.get('name', '') for col in columns}
+        col_mapping = {
+            self.sanitize_column_name(col.get("name", "")): col.get("name", "")
+            for col in columns
+        }
         db_columns = list(col_mapping.keys())
 
         rows_inserted = 0
         errors = 0
 
         for i in range(0, len(data), MAX_ROWS_PER_INSERT):
-            batch = data[i:i + MAX_ROWS_PER_INSERT]
-            
+            batch = data[i : i + MAX_ROWS_PER_INSERT]
+
             values_list = []
             for row in batch:
                 values = []
@@ -110,13 +115,14 @@ class PostgresStorageEngine:
                     original_col = col_mapping[db_col]
                     value = row.get(original_col)
                     if value is None:
-                        values.append('NULL')
+                        values.append("NULL")
                     elif isinstance(value, (int, float, bool)):
                         values.append(str(value))
                     elif isinstance(value, datetime):
                         values.append(f"'{value.isoformat()}'")
                     elif isinstance(value, (dict, list)):
-                        values.append(f"'{json.dumps(value).replace(\"'\", \"''\")}'")
+                        json_str = json.dumps(value).replace("'", "''")
+                        values.append(f"'{json_str}'")
                     else:
                         escaped = str(value).replace("'", "''")
                         values.append(f"'{escaped}'")
@@ -126,8 +132,8 @@ class PostgresStorageEngine:
                 continue
 
             insert_sql = f"""
-                INSERT INTO {table_name} ({', '.join(f'"{c}' for c in db_columns)})
-                VALUES {', '.join(values_list)}
+                INSERT INTO {table_name} ({", ".join(f'"{c}' for c in db_columns)})
+                VALUES {", ".join(values_list)}
             """
 
             try:
@@ -154,7 +160,7 @@ class PostgresStorageEngine:
     ) -> dict[str, Any]:
         """Execute SQL query on dataset table."""
         table_name = f"dataset_{dataset_id}"
-        
+
         if not self._is_safe_query(sql):
             return {
                 "status": "error",
@@ -169,7 +175,7 @@ class PostgresStorageEngine:
             result = await self.session.execute(text(sql), params or {})
             rows = [dict(row._mapping) for row in result]
             columns = list(result.keys()) if rows else []
-            
+
             return {
                 "status": "success",
                 "columns": columns,
@@ -188,14 +194,16 @@ class PostgresStorageEngine:
     async def get_table_columns(self, dataset_id: int) -> list[dict[str, str]]:
         """Get column information for dataset table."""
         table_name = f"dataset_{dataset_id}"
-        
+
         try:
-            result = await self.session.execute(text(f"""
+            result = await self.session.execute(
+                text(f"""
                 SELECT column_name, data_type 
                 FROM information_schema.columns 
                 WHERE table_name = '{table_name}'
                 ORDER BY ordinal_position
-            """))
+            """)
+            )
             columns = [{"name": row[0], "dtype": row[1]} for row in result]
             return columns
         except Exception as e:
@@ -205,9 +213,11 @@ class PostgresStorageEngine:
     async def get_table_row_count(self, dataset_id: int) -> int:
         """Get row count for dataset table."""
         table_name = f"dataset_{dataset_id}"
-        
+
         try:
-            result = await self.session.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
+            result = await self.session.execute(
+                text(f"SELECT COUNT(*) FROM {table_name}")
+            )
             return result.scalar() or 0
         except Exception:
             return 0
@@ -215,7 +225,7 @@ class PostgresStorageEngine:
     async def drop_table(self, dataset_id: int) -> bool:
         """Drop dataset table."""
         table_name = f"dataset_{dataset_id}"
-        
+
         try:
             await self.session.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
             await self.session.commit()
@@ -232,8 +242,7 @@ class PostgresStorageEngine:
     ) -> list[dict[str, Any]]:
         """Get sample data from dataset."""
         result = await self.execute_query(
-            dataset_id,
-            f"SELECT * FROM dataset_{dataset_id} LIMIT {limit}"
+            dataset_id, f"SELECT * FROM dataset_{dataset_id} LIMIT {limit}"
         )
         return result.get("rows", [])
 
@@ -244,7 +253,7 @@ class PostgresStorageEngine:
     ) -> dict[str, Any]:
         """Get statistics for a specific column."""
         safe_col = self.sanitize_column_name(column)
-        
+
         sql = f"""
             SELECT 
                 COUNT(*) as total_count,
@@ -256,7 +265,7 @@ class PostgresStorageEngine:
             FROM dataset_{dataset_id}
             WHERE {safe_col} IS NOT NULL
         """
-        
+
         try:
             result = await self.session.execute(text(sql))
             row = result.fetchone()
@@ -271,21 +280,29 @@ class PostgresStorageEngine:
                 }
         except Exception as e:
             logger.error(f"Statistics error: {e}")
-        
+
         return {}
 
     def _is_safe_query(self, sql: str) -> bool:
         """Validate query safety."""
         sql_lower = sql.lower().strip()
-        
-        dangerous = ['drop', 'delete', 'update', 'insert', 'alter', 'truncate', 'create']
+
+        dangerous = [
+            "drop",
+            "delete",
+            "update",
+            "insert",
+            "alter",
+            "truncate",
+            "create",
+        ]
         for keyword in dangerous:
             if sql_lower.startswith(keyword):
                 return False
-        
-        if 'grant' in sql_lower or 'revoke' in sql_lower:
+
+        if "grant" in sql_lower or "revoke" in sql_lower:
             return False
-            
+
         return True
 
 

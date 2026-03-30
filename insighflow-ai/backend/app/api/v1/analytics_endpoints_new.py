@@ -13,7 +13,7 @@ from app.models.user import User
 from app.services.analytics_engine import AnalyticsEngine
 from app.services.chart_generator import ChartGenerator
 from app.services.nl_to_sql import NLToSQLEngine, QueryExecutor
-from app.services.profiling import DataProfiler, SchemaDetector
+from app.services.profiling import DataProfiler
 
 router = APIRouter(prefix="/analytics", tags=["analytics-v2"])
 

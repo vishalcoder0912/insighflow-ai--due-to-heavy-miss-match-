@@ -1,20 +1,30 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Sparkles, User, Lightbulb } from 'lucide-react';
+import { Send, Sparkles, User, Lightbulb, BarChart3, Table, TrendingUp, AlertTriangle } from 'lucide-react';
 import { useData } from '@/contexts/DataContext';
 import { ChatMessage, ChartConfig } from '@/lib/data-store';
 import { Link } from 'react-router-dom';
+import { executeQuery, getInsights, detectAnomalies, calculateCorrelation } from '@/lib/api';
 
 const AnalyticsChart = lazy(() => import('@/components/charts/AnalyticsChart'));
 
 const ChartFallback = () => <div className="glass h-64 rounded-xl animate-pulse" />;
 
 const suggestedQueries = [
-  'What are the key findings?',
-  'Show the biggest risks',
-  'What trends were detected?',
-  'What should I do next?',
+  'Show top 10 by revenue',
+  'Find anomalies in the data',
+  'Show correlations between metrics',
+  'What is the total count?',
 ];
+
+const chartTypeMap: Record<string, ChartConfig['type']> = {
+  bar: 'bar',
+  line: 'line',
+  pie: 'pie',
+  scatter: 'scatter',
+  table: 'table',
+  kpi: 'kpi',
+};
 
 const ChatInterface = () => {
   const { dataset, chatMessages, addChatMessage, isProcessing, setIsProcessing } = useData();
@@ -37,44 +47,98 @@ const ChatInterface = () => {
     addChatMessage(userMsg);
     setIsProcessing(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      const datasetId = dataset.datasetId;
+      
+      if (!datasetId) {
+        const lower = query.toLowerCase();
+        let insights: string[] = [];
+        let content = '';
+        let chart: ChartConfig | undefined;
 
-    const lower = query.toLowerCase();
-    let insights: string[] = [];
-    let content = '';
-    let chart: ChartConfig | undefined;
+        if (lower.includes('risk')) {
+          insights = dataset.aiInsights.risks;
+          content = `I found ${dataset.aiInsights.risks.length || 0} risk signals in the data.`;
+        } else if (lower.includes('trend')) {
+          insights = dataset.aiInsights.trends;
+          chart = dataset.charts.find((item) => item.type === 'line' || item.type === 'area');
+          content = 'Here are the main trends detected in your data.';
+        } else if (lower.includes('recommend') || lower.includes('next')) {
+          insights = dataset.aiInsights.recommendations;
+          content = 'Here are the recommended next steps based on analysis.';
+        } else if (lower.includes('anomal')) {
+          insights = dataset.aiInsights.anomalies;
+          content = 'Here are the anomalies and unusual patterns detected.';
+        } else {
+          insights = dataset.aiInsights.key_findings;
+          chart = dataset.charts[0];
+          content = `Here are the key findings from your ${dataset.name} dataset.`;
+        }
 
-    if (lower.includes('risk')) {
-      insights = dataset.aiInsights.risks;
-      content = `I found ${dataset.aiInsights.risks.length || 0} risk signals in the backend analysis.`;
-    } else if (lower.includes('trend')) {
-      insights = dataset.aiInsights.trends;
-      chart = dataset.charts.find((item) => item.type === 'line' || item.type === 'area');
-      content = 'These are the main trends the backend analysis surfaced.';
-    } else if (lower.includes('recommend') || lower.includes('next')) {
-      insights = dataset.aiInsights.recommendations;
-      content = 'These are the next actions recommended by the backend analysis pipeline.';
-    } else if (lower.includes('anomal')) {
-      insights = dataset.aiInsights.anomalies;
-      chart = dataset.charts.find((item) => item.title.toLowerCase().includes('distribution'));
-      content = 'Here are the anomalies and unusual patterns detected in your dataset.';
-    } else {
-      insights = dataset.aiInsights.key_findings;
-      chart = dataset.charts[0];
-      content = `The ${dataset.name} dataset has been analyzed by the backend. Here are the most important findings.`;
+        const assistantMsg: ChatMessage = {
+          id: `msg-${Date.now() + 1}`,
+          role: 'assistant',
+          content,
+          chart,
+          insights,
+          timestamp: new Date(),
+        };
+        addChatMessage(assistantMsg);
+        setIsProcessing(false);
+        return;
+      }
+
+      const result = await executeQuery({
+        dataset_id: datasetId,
+        message: query,
+      });
+
+      let content = result.explanation || 'Here are the results of your query.';
+      let chart: ChartConfig | undefined;
+      let insights: string[] = [];
+
+      if (result.chart_config) {
+        chart = {
+          id: `chat-chart-${Date.now()}`,
+          type: chartTypeMap[result.chart_config.type] || 'bar',
+          title: result.chart_config.title || 'Chart',
+          xKey: result.chart_config.options?.xAxisKey || 'name',
+          yKey: result.chart_config.options?.yAxisKey || 'value',
+          data: result.chart_config.data || [],
+        };
+      }
+
+      if (result.row_count > 0 && result.rows.length > 0) {
+        insights = [`Query returned ${result.row_count} rows`];
+        if (result.chart_config?.type === 'kpi' && result.chart_config.data) {
+          const kpis = result.chart_config.data.slice(0, 3);
+          content = 'Key metrics from your query:';
+          insights.push(...kpis.map((k: any) => `${k.label}: ${k.value?.toLocaleString()}`));
+        }
+      }
+
+      const assistantMsg: ChatMessage = {
+        id: `msg-${Date.now() + 1}`,
+        role: 'assistant',
+        content,
+        chart,
+        insights,
+        timestamp: new Date(),
+      };
+      addChatMessage(assistantMsg);
+
+    } catch (error) {
+      const errorMsg: ChatMessage = {
+        id: `msg-${Date.now() + 1}`,
+        role: 'assistant',
+        content: `I encountered an error processing your query. Please try again or rephrase your question.`,
+        insights: [],
+        timestamp: new Date(),
+      };
+      addChatMessage(errorMsg);
+    } finally {
+      setIsProcessing(false);
     }
-
-    const assistantMsg: ChatMessage = {
-      id: `msg-${Date.now() + 1}`,
-      role: 'assistant',
-      content,
-      chart,
-      insights,
-      timestamp: new Date(),
-    };
-
-    addChatMessage(assistantMsg);
-    setIsProcessing(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {

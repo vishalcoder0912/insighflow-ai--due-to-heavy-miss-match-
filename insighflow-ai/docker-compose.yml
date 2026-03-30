@@ -23,15 +23,17 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - ./backend/.env.docker
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/insighflow
-      - SECRET_KEY=${SECRET_KEY:-supersecretkey123}
-      - REFRESH_SECRET_KEY=${REFRESH_SECRET_KEY:-refreshsecretkey123}
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/insighflow
     volumes:
       - ./backend:/app
       - uploads_data:/app/uploads
+      - sample_data:/app/sample_data
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - insighflow-network
 
@@ -45,8 +47,25 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - insighflow-network
+
+  # Ollama for local LLM (optional - falls back to rule-based if unavailable)
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - insighflow-network
+    profiles:
+      - ai
 
 networks:
   insighflow-network:
@@ -55,3 +74,5 @@ networks:
 volumes:
   postgres_data:
   uploads_data:
+  sample_data:
+  ollama_data:

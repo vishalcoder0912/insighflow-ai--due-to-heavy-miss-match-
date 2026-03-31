@@ -69,3 +69,72 @@ def auth_headers(token: str) -> dict[str, str]:
     """Return bearer auth headers."""
 
     return {"Authorization": f"Bearer {token}"}
+
+
+# ============================================================================
+# FORECASTING TEST FIXTURES
+# ============================================================================
+
+import pandas as pd
+import numpy as np
+
+
+@pytest.fixture
+def sample_timeseries_data():
+    """Generate pre-cached sample time series data for forecasting tests."""
+    dates = pd.date_range(start='2024-01-01', periods=100, freq='D')
+    values = np.sin(np.linspace(0, 4 * np.pi, 100)) * 100 + 500 + np.random.normal(0, 10, 100)
+    return pd.DataFrame({
+        'date': dates,
+        'value': values
+    })
+
+
+@pytest.fixture
+def mock_forecaster(monkeypatch):
+    """Mock the TimeSeriesForecaster for faster test execution.
+    
+    Use this fixture in slow forecasting tests to avoid expensive
+    model fitting operations (Prophet, ARIMA, exponential smoothing).
+    """
+    class MockTimeSeriesForecaster:
+        def __init__(self, *args, **kwargs):
+            self.data = kwargs.get('data', pd.DataFrame())
+            self.seasonal_period = 7
+            
+        def detect_trend(self):
+            return 'linear'
+        
+        def detect_seasonality(self):
+            return True, 7
+            
+        async def forecast(self, periods=12):
+            # Return a simple linear forecast for testing
+            if self.data.empty:
+                last_val = 100
+            else:
+                last_val = self.data.iloc[-1, -1] if isinstance(self.data.iloc[-1], pd.Series) else self.data.iloc[-1, 0]
+            
+            return {
+                'forecast': list(range(int(last_val), int(last_val) + periods)),
+                'lower_bound': list(range(int(last_val) - 10, int(last_val) - 10 + periods)),
+                'upper_bound': list(range(int(last_val) + 10, int(last_val) + 10 + periods)),
+                'trend': 'linear',
+                'seasonal': False,
+                'method': 'linear_fallback'
+            }
+    
+    # Optionally monkey-patch the actual class if needed
+    # monkeypatch.setattr("app.services.forecasting.TimeSeriesForecaster", MockTimeSeriesForecaster)
+    
+    return MockTimeSeriesForecaster
+
+
+def pytest_configure(config):
+    """Configure pytest markers for test categorization."""
+    config.addinivalue_line(
+        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
+    )
+    config.addinivalue_line(
+        "markers", "requires_models: marks tests that require expensive model imports"
+    )

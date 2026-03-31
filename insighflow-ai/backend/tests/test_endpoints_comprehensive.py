@@ -18,7 +18,7 @@ def sample_csv_file():
         'product': ['A', 'B'] * 25,
         'sales': np.random.uniform(100, 1000, 50),
         'quantity': np.random.randint(1, 100, 50),
-        'region': ['North', 'South', 'East', 'West'] * 12 + ['North']
+        'region': (['North', 'South', 'East', 'West'] * 13)[:50]
     })
     
     csv_buffer = io.BytesIO()

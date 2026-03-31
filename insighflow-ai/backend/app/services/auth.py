@@ -142,7 +142,7 @@ async def refresh_user_tokens(
     require_token_type(payload, "refresh")
     result = await session.execute(select(RefreshToken).where(RefreshToken.jti == payload["jti"]))
     token_record = result.scalar_one_or_none()
-    if token_record is None or token_record.revoked_at is not None or token_record.expires_at <= datetime.now(UTC):
+    if token_record is None or token_record.revoked_at is not None or token_record.expires_at <= datetime.now(UTC).replace(tzinfo=None):
         raise ApiException(status_code=401, code="refresh_token_invalid", message="Refresh token is invalid.")
 
     user = await session.get(User, int(payload["sub"]))

@@ -13,8 +13,12 @@ class DatasetAsset(Base, IntegerIDMixin, TimestampMixin):
 
     __tablename__ = "datasets"
 
-    project_id: Mapped[int] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
-    uploaded_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    project_id: Mapped[int] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    uploaded_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     file_format: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     encoding: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -27,4 +31,9 @@ class DatasetAsset(Base, IntegerIDMixin, TimestampMixin):
 
     project = relationship("Project", back_populates="datasets")
     uploaded_by = relationship("User", back_populates="uploaded_datasets")
-    dashboards = relationship("Dashboard", back_populates="dataset", cascade="all, delete-orphan")
+    dashboards = relationship(
+        "Dashboard", back_populates="dataset", cascade="all, delete-orphan"
+    )
+    chat_sessions = relationship(
+        "ChatSession", back_populates="dataset", cascade="all, delete-orphan"
+    )

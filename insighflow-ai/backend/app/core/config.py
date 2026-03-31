@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     spacy_model_name: str = "en_core_web_sm"
     anomaly_detection_mode: str = "hybrid"
     local_llm_provider: str = "rule_based"
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "mistral"
+    ollama_enabled: bool = True
 
     @property
     def sync_database_url(self) -> str:

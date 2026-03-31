@@ -385,3 +385,94 @@ export async function getDatasetSchema(datasetId: number) {
     { token }
   );
 }
+
+export interface ChatSession {
+  id: number;
+  title: string;
+  dataset_id: number;
+  message_count: number;
+  last_message_at: string | null;
+  created_at: string | null;
+}
+
+export interface ChatMessage {
+  id: number;
+  role: string;
+  content: string;
+  sql_query?: string;
+  chart_config?: {
+    type: string;
+    data: any[];
+    options: any;
+    title: string;
+  };
+  is_error: boolean;
+  is_cached: boolean;
+  execution_time_ms?: number;
+  row_count?: number;
+  created_at: string;
+}
+
+export interface SendMessageRequest {
+  session_id?: number;
+  dataset_id: number;
+  message: string;
+  use_llm?: boolean;
+}
+
+export interface SendMessageResponse {
+  status: string;
+  session_id: number;
+  message: ChatMessage;
+  suggestions: string[];
+  columns: string[];
+  rows: Record<string, any>[];
+}
+
+export async function createChatSession(datasetId: number, title?: string): Promise<{ status: string; session_id: number; title: string }> {
+  const token = await ensureSession();
+  return apiRequest<{ status: string; session_id: number; title: string }>('/chat/sessions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dataset_id: datasetId, title }),
+    token,
+  });
+}
+
+export async function getChatSessions(datasetId?: number): Promise<{ status: string; sessions: ChatSession[] }> {
+  const token = await ensureSession();
+  const url = datasetId ? `/chat/sessions?dataset_id=${datasetId}` : '/chat/sessions';
+  return apiRequest<{ status: string; sessions: ChatSession[] }>(url, { token });
+}
+
+export async function getSessionMessages(sessionId: number): Promise<{ status: string; session: any; messages: ChatMessage[] }> {
+  const token = await ensureSession();
+  return apiRequest<{ status: string; session: any; messages: ChatMessage[] }>(`/chat/sessions/${sessionId}/messages`, { token });
+}
+
+export async function deleteChatSession(sessionId: number): Promise<{ status: string; message: string }> {
+  const token = await ensureSession();
+  return apiRequest<{ status: string; message: string }>(`/chat/sessions/${sessionId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
+export async function sendChatMessage(request: SendMessageRequest): Promise<SendMessageResponse> {
+  const token = await ensureSession();
+  return apiRequest<SendMessageResponse>('/chat/message', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+    token,
+  });
+}
+
+export async function clearChatCache(datasetId?: number): Promise<{ status: string; cleared: boolean }> {
+  const token = await ensureSession();
+  const url = datasetId ? `/chat/cache/clear?dataset_id=${datasetId}` : '/chat/cache/clear';
+  return apiRequest<{ status: string; cleared: boolean }>(url, {
+    method: 'POST',
+    token,
+  });
+}

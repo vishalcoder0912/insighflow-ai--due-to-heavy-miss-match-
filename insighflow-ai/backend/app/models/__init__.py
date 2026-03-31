@@ -3,6 +3,7 @@
 from app.models.analytics_event import AnalyticsEvent
 from app.models.api_key import ApiKey
 from app.models.audit_log import AuditLog
+from app.models.chat import ChatMessage, ChatSession
 from app.models.dashboard import Dashboard
 from app.models.dataset import DatasetAsset
 from app.models.project import Project, ProjectDocument, ProjectShare
@@ -14,6 +15,8 @@ __all__ = [
     "AnalyticsEvent",
     "ApiKey",
     "AuditLog",
+    "ChatMessage",
+    "ChatSession",
     "Dashboard",
     "DatasetAsset",
     "Insight",

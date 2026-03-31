@@ -1,10 +1,10 @@
 import { useData } from '@/contexts/DataContext';
-import ChatInterface from '@/components/chat/ChatInterface';
+import ChatInterfaceV2 from '@/components/chat/ChatInterfaceV2';
 
 const ChatPage = () => {
   useData();
 
-  return <ChatInterface />;
+  return <ChatInterfaceV2 />;
 };
 
 export default ChatPage;

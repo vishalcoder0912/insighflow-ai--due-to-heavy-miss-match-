@@ -476,3 +476,145 @@ export async function clearChatCache(datasetId?: number): Promise<{ status: stri
     token,
   });
 }
+
+// Report Generation
+export interface ReportRequest {
+  dataset_id: number;
+  include_summary?: boolean;
+  include_statistics?: boolean;
+  include_charts?: boolean;
+  include_recommendations?: boolean;
+}
+
+export async function generatePDFReport(request: ReportRequest): Promise<Blob> {
+  const token = await ensureSession();
+  const response = await fetch(`${API_BASE_URL}/analytics/reports/pdf`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) throw new Error('Failed to generate PDF report');
+  return response.blob();
+}
+
+export async function generateExcelReport(request: ReportRequest): Promise<Blob> {
+  const token = await ensureSession();
+  const response = await fetch(`${API_BASE_URL}/analytics/reports/excel`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) throw new Error('Failed to generate Excel report');
+  return response.blob();
+}
+
+// Data Import
+export interface ImportResult {
+  status: string;
+  rows?: number;
+  columns?: string[];
+  data?: any[];
+  error?: string;
+}
+
+export async function importFromURL(url: string, sourceType?: string): Promise<ImportResult> {
+  const token = await ensureSession();
+  return apiRequest<ImportResult>('/import/url', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url, source_type: sourceType }),
+    token,
+  });
+}
+
+export async function importFromREST(params: {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  json_path?: string;
+}): Promise<ImportResult> {
+  const token = await ensureSession();
+  return apiRequest<ImportResult>('/import/rest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+    token,
+  });
+}
+
+export async function importFromPostgreSQL(params: {
+  connection_string: string;
+  query: string;
+}): Promise<ImportResult> {
+  const token = await ensureSession();
+  return apiRequest<ImportResult>('/import/postgresql', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+    token,
+  });
+}
+
+// Advanced Analytics
+export interface AdvancedAnalyticsRequest {
+  dataset_id: number;
+  analyses: string[];
+  options?: Record<string, any>;
+}
+
+export interface AdvancedAnalyticsResponse {
+  status: string;
+  results?: Record<string, any>;
+  failures?: any[];
+  ai_insights?: string[];
+}
+
+export async function runAdvancedAnalytics(request: AdvancedAnalyticsRequest): Promise<AdvancedAnalyticsResponse> {
+  const token = await ensureSession();
+  return apiRequest<AdvancedAnalyticsResponse>('/advanced-analytics/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+    token,
+  });
+}
+
+export async function runRFMAnalysis(params: {
+  dataset_id: number;
+  customer_column: string;
+  date_column: string;
+  amount_column: string;
+}): Promise<AdvancedAnalyticsResponse> {
+  return runAdvancedAnalytics({
+    dataset_id: params.dataset_id,
+    analyses: ['rfm'],
+    options: {
+      customer_column: params.customer_column,
+      date_column: params.date_column,
+      amount_column: params.amount_column,
+    },
+  });
+}
+
+export async function runCohortAnalysis(params: {
+  dataset_id: number;
+  cohort_column: string;
+  time_column: string;
+  metric_column: string;
+}): Promise<AdvancedAnalyticsResponse> {
+  return runAdvancedAnalytics({
+    dataset_id: params.dataset_id,
+    analyses: ['cohort'],
+    options: {
+      cohort_column: params.cohort_column,
+      time_column: params.time_column,
+      metric_column: params.metric_column,
+    },
+  });
+}

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Upload, MessageSquare, Database, Sparkles, Menu } from 'lucide-react';
+import { LayoutDashboard, Upload, MessageSquare, Database, Sparkles, Menu, FileText, Brain, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,9 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/upload', label: 'Upload Data', icon: Upload },
   { path: '/chat', label: 'AI Chat', icon: MessageSquare },
+  { path: '/analytics', label: 'Advanced Analytics', icon: Brain },
+  { path: '/reports', label: 'Export Reports', icon: FileText },
+  { path: '/import', label: 'Data Import', icon: Download },
 ];
 
 const SidebarContent = ({ pathname }: { pathname: string }) => (

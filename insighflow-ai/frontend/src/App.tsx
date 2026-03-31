@@ -10,6 +10,9 @@ const AppLayout = lazy(() => import("@/components/layout/AppLayout"));
 const Index = lazy(() => import("./pages/Index"));
 const UploadPage = lazy(() => import("./pages/UploadPage"));
 const ChatPage = lazy(() => import("./pages/ChatPage"));
+const ReportPage = lazy(() => import("./pages/ReportPage"));
+const ImportPage = lazy(() => import("./pages/ImportPage"));
+const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -38,6 +41,9 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/upload" element={<UploadPage />} />
                 <Route path="/chat" element={<ChatPage />} />
+                <Route path="/reports" element={<ReportPage />} />
+                <Route path="/import" element={<ImportPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
